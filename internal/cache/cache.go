@@ -220,10 +220,8 @@ func (c *TTLLRUCacheImpl) removeCacheExpired() (time.Duration, bool) {
 }
 
 func (c *TTLLRUCacheImpl) startCleanupWorker() {
-	// Гарантируем, что при выходе из горутины Close() получит сигнал о завершении
 	defer close(c.doneChan)
 
-	// Создаем изначально остановленный таймер, чтобы не тикал вхолостую
 	timer := time.NewTimer(0)
 	if !timer.Stop() {
 		<-timer.C
