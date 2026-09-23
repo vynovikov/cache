@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cache/main/internal/ttl"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,96 +43,96 @@ func (s *cacheSuite) TestShiftUp() {
 	tt := []struct {
 		name         string
 		cap          int
-		TTLNodes     []*TTLNode
+		TTLNodes     []*ttl.Node
 		currentIndex int
-		wantTTLNodes []*TTLNode
+		wantTTLNodes []*ttl.Node
 	}{
 		{
 			name: "0. Moved to intermediate level",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(5 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(10 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(11 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(12 * time.Second), heapIndex: 6},
-				{Key: "08", expireAt: time.Now().Add(7 * time.Second), heapIndex: 7},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(5 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 6},
+				{Key: "08", ExpireAt: time.Now().Add(7 * time.Second), HeapIndex: 7},
 			},
 			currentIndex: 7,
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(5 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "08", expireAt: time.Now().Add(7 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(10 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(11 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(12 * time.Second), heapIndex: 6},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 7},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(5 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "08", ExpireAt: time.Now().Add(7 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 6},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 7},
 			},
 		},
 		{
 			name: "1. Moved to top level",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(5 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(10 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(11 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(12 * time.Second), heapIndex: 6},
-				{Key: "08", expireAt: time.Now().Add(4 * time.Second), heapIndex: 7},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(5 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 6},
+				{Key: "08", ExpireAt: time.Now().Add(4 * time.Second), HeapIndex: 7},
 			},
 			currentIndex: 7,
-			wantTTLNodes: []*TTLNode{
-				{Key: "08", expireAt: time.Now().Add(4 * time.Second), heapIndex: 0},
-				{Key: "01", expireAt: time.Now().Add(5 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(10 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(11 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(12 * time.Second), heapIndex: 6},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 7},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "08", ExpireAt: time.Now().Add(4 * time.Second), HeapIndex: 0},
+				{Key: "01", ExpireAt: time.Now().Add(5 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 6},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 7},
 			},
 		},
 		{
 			name: "2. Not moved",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(5 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(10 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(11 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(12 * time.Second), heapIndex: 6},
-				{Key: "08", expireAt: time.Now().Add(13 * time.Second), heapIndex: 7},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(5 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 6},
+				{Key: "08", ExpireAt: time.Now().Add(13 * time.Second), HeapIndex: 7},
 			},
 			currentIndex: 7,
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(5 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(10 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(11 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(12 * time.Second), heapIndex: 6},
-				{Key: "08", expireAt: time.Now().Add(13 * time.Second), heapIndex: 7},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(5 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 6},
+				{Key: "08", ExpireAt: time.Now().Add(13 * time.Second), HeapIndex: 7},
 			},
 		},
 		{
 			name: "3. Real 1",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(80 * time.Millisecond), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(70 * time.Millisecond), heapIndex: 1},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(80 * time.Millisecond), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(70 * time.Millisecond), HeapIndex: 1},
 			},
 			currentIndex: 1,
-			wantTTLNodes: []*TTLNode{
-				{Key: "02", expireAt: time.Now().Add(70 * time.Millisecond), heapIndex: 0},
-				{Key: "01", expireAt: time.Now().Add(80 * time.Millisecond), heapIndex: 1},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "02", ExpireAt: time.Now().Add(70 * time.Millisecond), HeapIndex: 0},
+				{Key: "01", ExpireAt: time.Now().Add(80 * time.Millisecond), HeapIndex: 1},
 			},
 		},
 	}
@@ -144,21 +145,21 @@ func (s *cacheSuite) TestShiftUp() {
 			//0.1 Filling map
 			for _, TTLNode := range v.TTLNodes {
 				cache.data[TTLNode.Key] = &CacheNode{
-					Value:   TTLNode.heapIndex,
+					Value:   TTLNode.HeapIndex,
 					TTLElem: TTLNode,
 				}
 			}
 
 			// 0.2 Setting TTL heap
-			cache.TTLH.TTLNodes = v.TTLNodes
+			cache.TTLH.Nodes = v.TTLNodes
 
 			// 1. ShiftUp
-			cache.TTLH.shiftUp(v.currentIndex)
+			cache.TTLH.ShiftUp(v.currentIndex)
 
 			// 2. Comparing results
-			for j, w := range cache.TTLH.TTLNodes {
-				s.Equal(v.wantTTLNodes[j].heapIndex, w.heapIndex)
-				s.WithinDuration(w.expireAt, v.wantTTLNodes[j].expireAt, 5*time.Millisecond)
+			for j, w := range cache.TTLH.Nodes {
+				s.Equal(v.wantTTLNodes[j].HeapIndex, w.HeapIndex)
+				s.WithinDuration(w.ExpireAt, v.wantTTLNodes[j].ExpireAt, 5*time.Millisecond)
 				s.Equal(v.wantTTLNodes[j].Key, w.Key)
 			}
 		})
@@ -169,74 +170,74 @@ func (s *cacheSuite) TestShiftDown() {
 	tt := []struct {
 		name         string
 		cap          int
-		TTLNodes     []*TTLNode
+		TTLNodes     []*ttl.Node
 		currentIndex int
-		wantTTLNodes []*TTLNode
+		wantTTLNodes []*ttl.Node
 	}{
 		{
 			name: "0. Moved to intermediate level",
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(10 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 			currentIndex: 0,
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(9 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(10 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 		},
 		{
 			name: "1. Moved to bottom level",
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(16 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(16 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 			currentIndex: 0,
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(9 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(16 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(16 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 		},
 		{
 			name: "2. Not moved",
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(4 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(4 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 			currentIndex: 0,
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(4 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(4 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 		},
 	}
@@ -249,21 +250,21 @@ func (s *cacheSuite) TestShiftDown() {
 			//0.1 Filling map
 			for _, TTLNode := range v.TTLNodes {
 				cache.data[TTLNode.Key] = &CacheNode{
-					Value:   TTLNode.heapIndex,
+					Value:   TTLNode.HeapIndex,
 					TTLElem: TTLNode,
 				}
 			}
 
 			// 0.2 Setting TTL heap
-			cache.TTLH.TTLNodes = v.TTLNodes
+			cache.TTLH.Nodes = v.TTLNodes
 
 			// 1 ShiftDown
-			cache.TTLH.shiftDown(v.currentIndex)
+			cache.TTLH.ShiftDown(v.currentIndex)
 
 			// 2 Comparing results
-			for j, w := range cache.TTLH.TTLNodes {
-				s.Equal(v.wantTTLNodes[j].heapIndex, w.heapIndex)
-				s.WithinDuration(w.expireAt, v.wantTTLNodes[j].expireAt, 5*time.Millisecond)
+			for j, w := range cache.TTLH.Nodes {
+				s.Equal(v.wantTTLNodes[j].HeapIndex, w.HeapIndex)
+				s.WithinDuration(w.ExpireAt, v.wantTTLNodes[j].ExpireAt, 5*time.Millisecond)
 			}
 		})
 	}
@@ -273,73 +274,73 @@ func (s *cacheSuite) TestRebalance() {
 	tt := []struct {
 		name         string
 		cap          int
-		TTLNodes     []*TTLNode
-		wantTTLNodes []*TTLNode
+		TTLNodes     []*ttl.Node
+		wantTTLNodes []*ttl.Node
 	}{
 		{
 			name: "0. Top is unbalanced",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(10 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
-			wantTTLNodes: []*TTLNode{
-				{Key: "02", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "01", expireAt: time.Now().Add(10 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "02", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "01", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 		},
 		{
 			name: "1. Intermediate is unbalanced",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(10 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "04", expireAt: time.Now().Add(9 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "02", expireAt: time.Now().Add(10 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "04", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "02", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 		},
 		{
 			name: "2. Balanced",
 			cap:  10,
-			TTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(9 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(10 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			TTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
-			wantTTLNodes: []*TTLNode{
-				{Key: "01", expireAt: time.Now().Add(6 * time.Second), heapIndex: 0},
-				{Key: "02", expireAt: time.Now().Add(9 * time.Second), heapIndex: 1},
-				{Key: "03", expireAt: time.Now().Add(8 * time.Second), heapIndex: 2},
-				{Key: "04", expireAt: time.Now().Add(10 * time.Second), heapIndex: 3},
-				{Key: "05", expireAt: time.Now().Add(11 * time.Second), heapIndex: 4},
-				{Key: "06", expireAt: time.Now().Add(12 * time.Second), heapIndex: 5},
-				{Key: "07", expireAt: time.Now().Add(14 * time.Second), heapIndex: 6},
+			wantTTLNodes: []*ttl.Node{
+				{Key: "01", ExpireAt: time.Now().Add(6 * time.Second), HeapIndex: 0},
+				{Key: "02", ExpireAt: time.Now().Add(9 * time.Second), HeapIndex: 1},
+				{Key: "03", ExpireAt: time.Now().Add(8 * time.Second), HeapIndex: 2},
+				{Key: "04", ExpireAt: time.Now().Add(10 * time.Second), HeapIndex: 3},
+				{Key: "05", ExpireAt: time.Now().Add(11 * time.Second), HeapIndex: 4},
+				{Key: "06", ExpireAt: time.Now().Add(12 * time.Second), HeapIndex: 5},
+				{Key: "07", ExpireAt: time.Now().Add(14 * time.Second), HeapIndex: 6},
 			},
 		},
 	}
@@ -352,25 +353,25 @@ func (s *cacheSuite) TestRebalance() {
 			//0.1 Filling map
 			for _, TTLNode := range v.TTLNodes {
 				cache.data[TTLNode.Key] = &CacheNode{
-					Value:   TTLNode.heapIndex,
+					Value:   TTLNode.HeapIndex,
 					TTLElem: TTLNode,
 				}
 			}
 
 			// 0.2 Setting TTL heap
-			cache.TTLH.TTLNodes = v.TTLNodes
+			cache.TTLH.Nodes = v.TTLNodes
 
 			// 0.3 Waiting
 			time.Sleep(time.Millisecond * 20)
 
 			// 1 Rebalance
-			cache.TTLH.rebalance()
+			cache.TTLH.Rebalance()
 
 			// 2 Comparing results
-			for j, w := range cache.TTLH.TTLNodes {
-				s.Equal(v.wantTTLNodes[j].heapIndex, w.heapIndex)
+			for j, w := range cache.TTLH.Nodes {
+				s.Equal(v.wantTTLNodes[j].HeapIndex, w.HeapIndex)
 				s.Equal(v.wantTTLNodes[j].Key, w.Key)
-				s.WithinDuration(w.expireAt, v.wantTTLNodes[j].expireAt, 5*time.Millisecond)
+				s.WithinDuration(w.ExpireAt, v.wantTTLNodes[j].ExpireAt, 5*time.Millisecond)
 			}
 		})
 	}
@@ -660,7 +661,7 @@ func (s *cacheSuite) TestSet() {
 			gotData := make([]keyValueTTL, 0)
 			gotTTLH := make([]keyExpireIn, 0)
 
-			LRUNode := cache.LRULL.head
+			LRUNode := cache.LRULL.Head
 			gotLRUL := []string{"HEAD"}
 
 			for gotKey, gotValue := range cache.data {
@@ -668,7 +669,7 @@ func (s *cacheSuite) TestSet() {
 					keyValueTTL{
 						Key:   gotKey,
 						Value: gotValue.Value,
-						TTL:   time.Until(gotValue.TTLElem.expireAt).Round(time.Second),
+						TTL:   time.Until(gotValue.TTLElem.ExpireAt).Round(time.Second),
 					},
 				)
 			}
@@ -702,10 +703,10 @@ func (s *cacheSuite) TestSet() {
 			gotLRUL = append(gotLRUL, "TAIL")
 
 			// 5. Retreiving TTL heap data
-			for _, TTLNode := range cache.TTLH.TTLNodes {
+			for _, TTLNode := range cache.TTLH.Nodes {
 				keyExpireInUnit := keyExpireIn{
 					Key:      TTLNode.Key,
-					ExpireIn: time.Until(TTLNode.expireAt).Round(time.Second),
+					ExpireIn: time.Until(TTLNode.ExpireAt).Round(time.Second),
 				}
 				gotTTLH = append(gotTTLH, keyExpireInUnit)
 			}
@@ -906,7 +907,7 @@ func (s *cacheSuite) TestGet() {
 			gotData := make([]keyValueTTL, 0)
 			gotTTLH := make([]keyExpireIn, 0)
 
-			LRUNode := cache.LRULL.head
+			LRUNode := cache.LRULL.Head
 			gotLRUL := []string{"HEAD"}
 
 			for gotKey, gotValue := range cache.data {
@@ -914,7 +915,7 @@ func (s *cacheSuite) TestGet() {
 					keyValueTTL{
 						Key:   gotKey,
 						Value: gotValue.Value,
-						TTL:   time.Until(gotValue.TTLElem.expireAt).Round(time.Second),
+						TTL:   time.Until(gotValue.TTLElem.ExpireAt).Round(time.Second),
 					},
 				)
 			}
@@ -948,10 +949,10 @@ func (s *cacheSuite) TestGet() {
 			gotLRUL = append(gotLRUL, "TAIL")
 
 			// 5. Retreiving TTL heap data
-			for _, TTLNode := range cache.TTLH.TTLNodes {
+			for _, TTLNode := range cache.TTLH.Nodes {
 				keyExpireInUnit := keyExpireIn{
 					Key:      TTLNode.Key,
-					ExpireIn: time.Until(TTLNode.expireAt).Round(time.Second),
+					ExpireIn: time.Until(TTLNode.ExpireAt).Round(time.Second),
 				}
 				gotTTLH = append(gotTTLH, keyExpireInUnit)
 			}
@@ -1170,7 +1171,7 @@ func (c *TTLLRUCacheImpl) getState() ([]keyValue, []string, []string) {
 	gotLRUL := []string{"HEAD"}
 	gotTTLH := make([]string, 0)
 	gotData := make([]keyValue, 0)
-	LRUNode := c.LRULL.head
+	LRUNode := c.LRULL.Head
 
 	// 1. LRU linked list
 	for LRUNode.Next.Next != nil {
@@ -1180,7 +1181,7 @@ func (c *TTLLRUCacheImpl) getState() ([]keyValue, []string, []string) {
 	gotLRUL = append(gotLRUL, "TAIL")
 
 	// 2. TTL heap
-	for _, TTLNode := range c.TTLH.TTLNodes {
+	for _, TTLNode := range c.TTLH.Nodes {
 		gotTTLH = append(gotTTLH, TTLNode.Key)
 	}
 

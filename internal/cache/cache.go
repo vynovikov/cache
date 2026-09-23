@@ -3,6 +3,9 @@ package cache
 import (
 	"sync"
 	"time"
+
+	"github.com/cache/main/internal/lru"
+	"github.com/cache/main/internal/ttl"
 )
 
 type TTLLRUCache interface {
@@ -15,73 +18,44 @@ type TTLLRUCache interface {
 	Freeze()
 }
 
-type LRUNode struct {
-	Key  string
-	Next *LRUNode
-	Prev *LRUNode
-}
-
-type TTLNode struct {
-	Key       string
-	expireAt  time.Time
-	heapIndex int
-}
-
 type CacheNode struct {
 	Value   any
-	LRUElem *LRUNode
-	TTLElem *TTLNode
+	LRUElem *lru.Node
+	TTLElem *ttl.Node
 }
 
 func newCacheNode(key string, value any, expireAt time.Time, TTLHeapIndex int) *CacheNode {
 
 	return &CacheNode{
 		Value: value,
-		LRUElem: &LRUNode{
+		LRUElem: &lru.Node{
 			Key: key,
 		},
-		TTLElem: &TTLNode{
+		TTLElem: &ttl.Node{
 			Key:       key,
-			expireAt:  expireAt,
-			heapIndex: TTLHeapIndex,
+			ExpireAt:  expireAt,
+			HeapIndex: TTLHeapIndex,
 		},
 	}
 }
 
-func newTTLNodeFromCacheNode(cacheNode *CacheNode) *TTLNode {
+func newTTLNodeFromCacheNode(cacheNode *CacheNode) *ttl.Node {
 
-	return &TTLNode{
+	return &ttl.Node{
 		Key:       cacheNode.TTLElem.Key,
-		heapIndex: cacheNode.TTLElem.heapIndex,
-		expireAt:  cacheNode.TTLElem.expireAt,
+		HeapIndex: cacheNode.TTLElem.HeapIndex,
+		ExpireAt:  cacheNode.TTLElem.ExpireAt,
 	}
 }
 
-type LRULinkedList struct {
-	head *LRUNode
-	tail *LRUNode
-}
-
-func newLRULinkedList() LRULinkedList {
-	head, tail := &LRUNode{}, &LRUNode{}
+func newLRULinkedList() lru.LinkedList {
+	head, tail := &lru.Node{}, &lru.Node{}
 	head.Next = tail
 	tail.Prev = head
 
-	return LRULinkedList{
-		head: head,
-		tail: tail,
-	}
-}
-
-type TTLHeap struct {
-	TTLNodes []*TTLNode
-}
-
-func newTTLHeap(cap int) TTLHeap {
-	TTLNodes := make([]*TTLNode, 0, cap)
-
-	return TTLHeap{
-		TTLNodes: TTLNodes,
+	return lru.LinkedList{
+		Head: head,
+		Tail: tail,
 	}
 }
 
@@ -89,8 +63,8 @@ type TTLLRUCacheImpl struct {
 	mu    sync.Mutex
 	data  map[string]*CacheNode
 	cap   int
-	LRULL LRULinkedList
-	TTLH  TTLHeap
+	LRULL lru.LinkedList
+	TTLH  ttl.Heap
 
 	doneChan       chan struct{}
 	freezeChan     chan struct{}
@@ -99,7 +73,7 @@ type TTLLRUCacheImpl struct {
 
 func NewCache(cap int) *TTLLRUCacheImpl {
 	m := make(map[string]*CacheNode, cap)
-	ttlHeap := newTTLHeap(cap)
+	ttlHeap := ttl.NewHeap(cap)
 	lruLL := newLRULinkedList()
 
 	doneChan := make(chan struct{}, 1)
@@ -129,15 +103,15 @@ func (c *TTLLRUCacheImpl) Set(key string, value any, ttl time.Duration) {
 
 	if oldCacheNode, ok := c.data[key]; ok {
 		oldCacheNode.Value = value
-		oldCacheNode.TTLElem.expireAt = time.Now().Add(ttl)
+		oldCacheNode.TTLElem.ExpireAt = time.Now().Add(ttl)
 
 		c.data[key] = oldCacheNode
 
-		c.TTLH.shiftUp(oldCacheNode.TTLElem.heapIndex)
-		c.TTLH.shiftDown(oldCacheNode.TTLElem.heapIndex)
-		c.LRULL.moveToHead(oldCacheNode.LRUElem)
+		c.TTLH.ShiftUp(oldCacheNode.TTLElem.HeapIndex)
+		c.TTLH.ShiftDown(oldCacheNode.TTLElem.HeapIndex)
+		c.LRULL.MoveToHead(oldCacheNode.LRUElem)
 
-		if oldCacheNode.TTLElem.heapIndex == 0 {
+		if oldCacheNode.TTLElem.HeapIndex == 0 {
 
 			select {
 			case c.resetTimerChan <- struct{}{}:
@@ -153,27 +127,27 @@ func (c *TTLLRUCacheImpl) Set(key string, value any, ttl time.Duration) {
 	// Not found
 
 	if len(c.data) == c.cap {
-		keyToDelete := c.LRULL.removeTail()
-		heapIndexToRemove := c.data[keyToDelete].TTLElem.heapIndex
-		c.TTLH.remove(heapIndexToRemove)
+		keyToDelete := c.LRULL.RemoveTail()
+		heapIndexToRemove := c.data[keyToDelete].TTLElem.HeapIndex
+		c.TTLH.Remove(heapIndexToRemove)
 
 		delete(c.data, keyToDelete)
 	}
 
-	newCacheNodeExample := newCacheNode(key, value, time.Now().Add(ttl), len(c.TTLH.TTLNodes))
+	newCacheNodeExample := newCacheNode(key, value, time.Now().Add(ttl), len(c.TTLH.Nodes))
 
 	c.data[key] = newCacheNodeExample
-	c.TTLH.TTLNodes = append(c.TTLH.TTLNodes, newCacheNodeExample.TTLElem)
-	c.LRULL.insertAtHead(newCacheNodeExample.LRUElem)
+	c.TTLH.Nodes = append(c.TTLH.Nodes, newCacheNodeExample.TTLElem)
+	c.LRULL.InsertAtHead(newCacheNodeExample.LRUElem)
 
-	heapCurrentSize := len(c.TTLH.TTLNodes)
+	heapCurrentSize := len(c.TTLH.Nodes)
 	if key == "key01" {
 		x := 1
 		_ = x
 	}
-	c.TTLH.shiftUp(heapCurrentSize - 1)
+	c.TTLH.ShiftUp(heapCurrentSize - 1)
 
-	if newCacheNodeExample.TTLElem.heapIndex == 0 && len(c.TTLH.TTLNodes) > 1 {
+	if newCacheNodeExample.TTLElem.HeapIndex == 0 && len(c.TTLH.Nodes) > 1 {
 
 		select {
 		case c.resetTimerChan <- struct{}{}:
@@ -190,17 +164,17 @@ func (c *TTLLRUCacheImpl) Get(key string) (value any, exists bool) {
 
 	if foundCacheNode, ok := c.data[key]; ok {
 
-		if foundCacheNode.TTLElem.expireAt.Before(time.Now()) {
-			c.LRULL.remove(foundCacheNode.LRUElem)
-			heapIndexToRemove := c.data[key].TTLElem.heapIndex
-			c.TTLH.remove(heapIndexToRemove)
+		if foundCacheNode.TTLElem.ExpireAt.Before(time.Now()) {
+			c.LRULL.Remove(foundCacheNode.LRUElem)
+			heapIndexToRemove := c.data[key].TTLElem.HeapIndex
+			c.TTLH.Remove(heapIndexToRemove)
 
 			delete(c.data, key)
 
 			return nil, false
 		}
 
-		c.LRULL.moveToHead(foundCacheNode.LRUElem)
+		c.LRULL.MoveToHead(foundCacheNode.LRUElem)
 
 		return foundCacheNode.Value, true
 	}
@@ -228,17 +202,17 @@ func (c *TTLLRUCacheImpl) removeCacheExpired() (time.Duration, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	expiredKeys := c.TTLH.removeHeapExpired(time.Now())
+	expiredKeys := c.TTLH.RemoveHeapExpired(time.Now())
 
 	for _, key := range expiredKeys {
 		if cacheNode, ok := c.data[key]; ok {
-			c.LRULL.remove(cacheNode.LRUElem)
+			c.LRULL.Remove(cacheNode.LRUElem)
 			delete(c.data, key)
 		}
 	}
 
-	if len(c.TTLH.TTLNodes) > 0 {
-		timeLeft := max(time.Until(c.TTLH.TTLNodes[0].expireAt), 0)
+	if len(c.TTLH.Nodes) > 0 {
+		timeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), 0)
 		return timeLeft, true
 	}
 
@@ -279,129 +253,4 @@ func (c *TTLLRUCacheImpl) startCleanupWorker() {
 			}
 		}
 	}
-}
-
-func (l *LRULinkedList) remove(LRUnode *LRUNode) {
-	LRUnode.Prev.Next = LRUnode.Next
-	LRUnode.Next.Prev = LRUnode.Prev
-}
-
-func (l *LRULinkedList) insertAtHead(LRUnode *LRUNode) {
-	LRUnode.Prev = l.head
-	LRUnode.Next = l.head.Next
-
-	l.head.Next.Prev = LRUnode
-	l.head.Next = LRUnode
-}
-
-func (l *LRULinkedList) moveToHead(LRUnode *LRUNode) {
-	l.remove(LRUnode)
-	l.insertAtHead(LRUnode)
-}
-
-func (l *LRULinkedList) removeTail() string {
-	tailPrevKey := l.tail.Prev.Key
-
-	l.remove(l.tail.Prev)
-
-	return tailPrevKey
-}
-
-func (h *TTLHeap) shiftUp(currentIndex int) {
-	for currentIndex > 0 {
-
-		parentIndex := (currentIndex - 1) / 2
-		if h.TTLNodes[currentIndex].expireAt.After(h.TTLNodes[parentIndex].expireAt) {
-			break
-		}
-
-		h.swap(currentIndex, parentIndex)
-
-		currentIndex = parentIndex
-	}
-}
-
-func (h *TTLHeap) shiftDown(currentIndex int) {
-	nodesLen := len(h.TTLNodes)
-	for {
-		leftChildIndex := currentIndex*2 + 1
-		rightChildIndex := currentIndex*2 + 2
-		smallestIndex := currentIndex
-
-		if leftChildIndex < nodesLen && h.TTLNodes[leftChildIndex].expireAt.Before(h.TTLNodes[smallestIndex].expireAt) {
-			smallestIndex = leftChildIndex
-		}
-
-		if rightChildIndex < nodesLen && h.TTLNodes[rightChildIndex].expireAt.Before(h.TTLNodes[smallestIndex].expireAt) {
-			smallestIndex = rightChildIndex
-		}
-
-		if smallestIndex != currentIndex {
-
-			h.swap(currentIndex, smallestIndex)
-
-			currentIndex = smallestIndex
-
-			continue
-		}
-
-		break
-	}
-}
-
-func (h *TTLHeap) swap(i, j int) {
-	h.TTLNodes[i], h.TTLNodes[j] = h.TTLNodes[j], h.TTLNodes[i]
-
-	h.TTLNodes[i].heapIndex = i
-	h.TTLNodes[j].heapIndex = j
-}
-
-func (h *TTLHeap) remove(removeIndex int) {
-	heapLastIndex := len(h.TTLNodes) - 1
-
-	if removeIndex == heapLastIndex {
-		h.TTLNodes = h.TTLNodes[:removeIndex]
-
-	} else {
-		h.swap(removeIndex, heapLastIndex)
-		h.TTLNodes = h.TTLNodes[:heapLastIndex]
-		h.shiftUp(removeIndex)
-		h.shiftDown(removeIndex)
-	}
-}
-
-func (h *TTLHeap) rebalance() {
-	n := len(h.TTLNodes)
-
-	for i := n/2 - 1; i >= 0; i-- {
-		h.shiftDown(i)
-	}
-}
-
-func (h *TTLHeap) removeHeapExpired(now time.Time) []string {
-	expiredCount := 0
-	for expiredCount < len(h.TTLNodes) {
-		if h.TTLNodes[expiredCount].expireAt.After(now) {
-			break
-		}
-		expiredCount++
-	}
-
-	if expiredCount == 0 {
-		return nil
-	}
-
-	expiredKeys := make([]string, expiredCount)
-	for i := 0; i < expiredCount; i++ {
-		expiredKeys[i] = h.TTLNodes[i].Key
-		h.TTLNodes[i] = nil
-	}
-
-	h.TTLNodes = h.TTLNodes[expiredCount:]
-
-	for i, node := range h.TTLNodes {
-		node.heapIndex = i
-	}
-
-	return expiredKeys
 }
