@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"math/bits"
 	"sync"
 	"time"
 
@@ -39,7 +40,7 @@ func newCacheNode(key string, value any, expireAt time.Time, TTLHeapIndex int) *
 	}
 }
 
-type TTLLRUCacheImpl struct {
+type TTLLRUCacheShard struct {
 	mu    sync.Mutex
 	data  map[string]*CacheNode
 	cap   int
@@ -51,7 +52,12 @@ type TTLLRUCacheImpl struct {
 	resetTimerChan chan struct{}
 }
 
-func NewCache(cap int) *TTLLRUCacheImpl {
+type ShardedCache struct {
+	shards    []*TTLLRUCacheShard
+	shardMask uint64
+}
+
+func NewCacheShard(cap int) *TTLLRUCacheShard {
 	m := make(map[string]*CacheNode, cap)
 	ttlHeap := ttl.NewHeap(cap)
 	lruLL := lru.NewLRULinkedList()
@@ -60,7 +66,7 @@ func NewCache(cap int) *TTLLRUCacheImpl {
 	freezeChan := make(chan struct{})
 	reserTimerChan := make(chan struct{}, 1)
 
-	cache := &TTLLRUCacheImpl{
+	cache := &TTLLRUCacheShard{
 		mu:    sync.Mutex{},
 		data:  m,
 		cap:   cap,
@@ -77,7 +83,27 @@ func NewCache(cap int) *TTLLRUCacheImpl {
 	return cache
 }
 
-func (c *TTLLRUCacheImpl) Set(key string, value any, ttl time.Duration) {
+func NewCacheSharded(totalCap int, requestedShards int) *ShardedCache {
+	if requestedShards <= 0 {
+		requestedShards = 32
+	}
+
+	shardCount := max(1<<bits.Len(uint(requestedShards-1)), 2)   // shardCount =...= 2^(bits in (requestedShards-1)), at least 2
+	shardCap := max(((totalCap+shardCount-1)/shardCount)*3/2, 1) // shardCap =...= 150%(totalCap/ shardCount), at least 1
+
+	shards := make([]*TTLLRUCacheShard, shardCount)
+
+	for i := range shards {
+		shards[i] = NewCacheShard(shardCap)
+	}
+
+	return &ShardedCache{
+		shards:    shards,
+		shardMask: uint64(shardCount - 1),
+	}
+}
+
+func (c *TTLLRUCacheShard) Set(key string, value any, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -138,7 +164,7 @@ func (c *TTLLRUCacheImpl) Set(key string, value any, ttl time.Duration) {
 	}
 }
 
-func (c *TTLLRUCacheImpl) Get(key string) (value any, exists bool) {
+func (c *TTLLRUCacheShard) Get(key string) (value any, exists bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -164,7 +190,7 @@ func (c *TTLLRUCacheImpl) Get(key string) (value any, exists bool) {
 	return nil, false
 }
 
-func (c *TTLLRUCacheImpl) Freeze() {
+func (c *TTLLRUCacheShard) Freeze() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	select {
@@ -178,7 +204,7 @@ func (c *TTLLRUCacheImpl) Freeze() {
 	<-c.doneChan
 }
 
-func (c *TTLLRUCacheImpl) removeCacheExpired() (time.Duration, bool) {
+func (c *TTLLRUCacheShard) removeCacheExpired() (time.Duration, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -199,7 +225,7 @@ func (c *TTLLRUCacheImpl) removeCacheExpired() (time.Duration, bool) {
 	return 0, false
 }
 
-func (c *TTLLRUCacheImpl) startCleanupWorker() {
+func (c *TTLLRUCacheShard) startCleanupWorker() {
 	defer close(c.doneChan)
 
 	timer := time.NewTimer(0)

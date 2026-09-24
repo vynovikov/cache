@@ -307,7 +307,7 @@ func (s *cacheSuite) TestSet() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCache(v.cap)
+			cache := NewCacheShard(v.cap)
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
@@ -553,7 +553,7 @@ func (s *cacheSuite) TestGet() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCache(v.cap)
+			cache := NewCacheShard(v.cap)
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
@@ -784,7 +784,7 @@ func (s *cacheSuite) TestWork() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCache(v.cap)
+			cache := NewCacheShard(v.cap)
 
 			// 1. Set data
 			for _, setItem := range v.setData {
@@ -828,7 +828,7 @@ func (s *cacheSuite) TestWork() {
 	}
 }
 
-func (c *TTLLRUCacheImpl) getState() ([]keyValue, []string, []string) {
+func (c *TTLLRUCacheShard) getState() ([]keyValue, []string, []string) {
 	gotLRUL := []string{"HEAD"}
 	gotTTLH := make([]string, 0)
 	gotData := make([]keyValue, 0)
