@@ -39,26 +39,6 @@ func newCacheNode(key string, value any, expireAt time.Time, TTLHeapIndex int) *
 	}
 }
 
-func newTTLNodeFromCacheNode(cacheNode *CacheNode) *ttl.Node {
-
-	return &ttl.Node{
-		Key:       cacheNode.TTLElem.Key,
-		HeapIndex: cacheNode.TTLElem.HeapIndex,
-		ExpireAt:  cacheNode.TTLElem.ExpireAt,
-	}
-}
-
-func newLRULinkedList() lru.LinkedList {
-	head, tail := &lru.Node{}, &lru.Node{}
-	head.Next = tail
-	tail.Prev = head
-
-	return lru.LinkedList{
-		Head: head,
-		Tail: tail,
-	}
-}
-
 type TTLLRUCacheImpl struct {
 	mu    sync.Mutex
 	data  map[string]*CacheNode
@@ -74,7 +54,7 @@ type TTLLRUCacheImpl struct {
 func NewCache(cap int) *TTLLRUCacheImpl {
 	m := make(map[string]*CacheNode, cap)
 	ttlHeap := ttl.NewHeap(cap)
-	lruLL := newLRULinkedList()
+	lruLL := lru.NewLRULinkedList()
 
 	doneChan := make(chan struct{}, 1)
 	freezeChan := make(chan struct{})

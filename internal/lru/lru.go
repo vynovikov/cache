@@ -11,6 +11,17 @@ type LinkedList struct {
 	Tail *Node
 }
 
+func NewLRULinkedList() LinkedList {
+	head, tail := &Node{}, &Node{}
+	head.Next = tail
+	tail.Prev = head
+
+	return LinkedList{
+		Head: head,
+		Tail: tail,
+	}
+}
+
 func (l *LinkedList) Remove(node *Node) {
 	node.Prev.Next = node.Next
 	node.Next.Prev = node.Prev
