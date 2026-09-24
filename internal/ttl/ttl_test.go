@@ -309,7 +309,7 @@ func (s *ttlSuite) TestRebalance() {
 				Nodes: v.TTLNodes,
 			}
 
-			// 0.3 Waiting
+			// 0.1 Waiting
 			time.Sleep(time.Millisecond * 20)
 
 			// 1 Rebalance
