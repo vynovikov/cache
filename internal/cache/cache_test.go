@@ -311,12 +311,12 @@ func (s *cacheSuite) TestSet() {
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
-				cache.Set(initialItem.Key, initialItem.Value, initialItem.TTL)
+				cache.set(initialItem.Key, initialItem.Value, initialItem.TTL)
 				time.Sleep(10 * time.Millisecond)
 			}
 
 			// 1. Executing Set
-			cache.Set(v.addData.Key, v.addData.Value, v.addData.TTL)
+			cache.set(v.addData.Key, v.addData.Value, v.addData.TTL)
 
 			// 2.Retreiving cache data
 			gotData := make([]keyValueTTL, 0)
@@ -557,12 +557,12 @@ func (s *cacheSuite) TestGet() {
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
-				cache.Set(initialItem.Key, initialItem.Value, initialItem.TTL)
+				cache.set(initialItem.Key, initialItem.Value, initialItem.TTL)
 				time.Sleep(10 * time.Millisecond)
 			}
 
 			// 1. Executing Get
-			gotValue, gotExists := cache.Get(v.key)
+			gotValue, gotExists := cache.get(v.key)
 
 			// 2.Retreiving cache data
 			gotData := make([]keyValueTTL, 0)
@@ -788,7 +788,7 @@ func (s *cacheSuite) TestWork() {
 
 			// 1. Set data
 			for _, setItem := range v.setData {
-				cache.Set(setItem.Key, setItem.Value, setItem.TTL)
+				cache.set(setItem.Key, setItem.Value, setItem.TTL)
 				time.Sleep(10 * time.Millisecond)
 			}
 
@@ -796,7 +796,7 @@ func (s *cacheSuite) TestWork() {
 			time.Sleep(v.sleepTime)
 
 			// 3. Get data
-			gotValue, gotExists := cache.Get(v.key)
+			gotValue, gotExists := cache.get(v.key)
 
 			// 4. Comparing data
 			s.Equal(v.wantValue, gotValue)

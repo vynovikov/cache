@@ -105,7 +105,7 @@ func NewCacheSharded(totalCap int, requestedShards int) *ShardedCache {
 	}
 }
 
-func (c *TTLLRUCacheShard) Set(key string, value any, ttl time.Duration) {
+func (c *TTLLRUCacheShard) set(key string, value any, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -169,10 +169,10 @@ func (c *TTLLRUCacheShard) Set(key string, value any, ttl time.Duration) {
 func (s *ShardedCache) Set(key string, value any, ttl time.Duration) {
 	shard := s.getShard(key)
 
-	shard.Set(key, value, ttl)
+	shard.set(key, value, ttl)
 }
 
-func (c *TTLLRUCacheShard) Get(key string) (value any, exists bool) {
+func (c *TTLLRUCacheShard) get(key string) (value any, exists bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -201,10 +201,10 @@ func (c *TTLLRUCacheShard) Get(key string) (value any, exists bool) {
 func (s *ShardedCache) Get(key string) (value any, exists bool) {
 	shard := s.getShard(key)
 
-	return shard.Get(key)
+	return shard.get(key)
 }
 
-func (c *TTLLRUCacheShard) Freeze() {
+func (c *TTLLRUCacheShard) freeze() {
 	c.mu.Lock()
 
 	select {
@@ -224,7 +224,7 @@ func (c *TTLLRUCacheShard) Freeze() {
 
 func (s *ShardedCache) Freeze() {
 	for _, shard := range s.shards {
-		shard.Freeze()
+		shard.freeze()
 	}
 }
 
