@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
+
 	"github.com/cache/main/internal/lru"
 	"github.com/cache/main/internal/ttl"
 )
@@ -164,6 +166,12 @@ func (c *TTLLRUCacheShard) Set(key string, value any, ttl time.Duration) {
 	}
 }
 
+func (s *ShardedCache) Set(key string, value any, ttl time.Duration) {
+	shard := s.getShard(key)
+
+	shard.Set(key, value, ttl)
+}
+
 func (c *TTLLRUCacheShard) Get(key string) (value any, exists bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -190,18 +198,34 @@ func (c *TTLLRUCacheShard) Get(key string) (value any, exists bool) {
 	return nil, false
 }
 
+func (s *ShardedCache) Get(key string) (value any, exists bool) {
+	shard := s.getShard(key)
+
+	return shard.Get(key)
+}
+
 func (c *TTLLRUCacheShard) Freeze() {
 	c.mu.Lock()
-	defer c.mu.Unlock()
+
 	select {
 	case <-c.freezeChan:
+		c.mu.Unlock()
+
 		return
 	default:
 	}
 
 	close(c.freezeChan)
 
+	c.mu.Unlock()
+
 	<-c.doneChan
+}
+
+func (s *ShardedCache) Freeze() {
+	for _, shard := range s.shards {
+		shard.Freeze()
+	}
 }
 
 func (c *TTLLRUCacheShard) removeCacheExpired() (time.Duration, bool) {
@@ -257,4 +281,10 @@ func (c *TTLLRUCacheShard) startCleanupWorker() {
 			}
 		}
 	}
+}
+
+func (s *ShardedCache) getShard(key string) *TTLLRUCacheShard {
+	idx := xxhash.Sum64String(key) & s.shardMask // idx =...= hash_number * bit_mask (i.e 10001 & 00011 = 00001(2x) => 1(10x))
+
+	return s.shards[idx]
 }
