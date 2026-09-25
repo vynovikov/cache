@@ -243,12 +243,14 @@ func (c *TTLLRUCacheShard) removeCacheExpired() (time.Duration, bool) {
 		}
 	}
 
-	if len(c.TTLH.Nodes) > 0 {
-		timeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), c.minTick)
-		return timeLeft, true
+	if len(c.TTLH.Nodes) == 0 {
+
+		return c.minTick, false
 	}
 
-	return c.minTick, false
+	timeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), c.minTick)
+
+	return timeLeft, true
 }
 
 func (c *TTLLRUCacheShard) startCleanupWorker() {
