@@ -43,11 +43,12 @@ func newCacheNode(key string, value any, expireAt time.Time, TTLHeapIndex int) *
 }
 
 type TTLLRUCacheShard struct {
-	mu    sync.Mutex
-	data  map[string]*CacheNode
-	cap   int
-	LRULL lru.LinkedList
-	TTLH  ttl.Heap
+	mu      sync.Mutex
+	data    map[string]*CacheNode
+	cap     int
+	minTick time.Duration
+	LRULL   lru.LinkedList
+	TTLH    ttl.Heap
 
 	doneChan       chan struct{}
 	freezeChan     chan struct{}
@@ -59,7 +60,7 @@ type ShardedCache struct {
 	shardMask uint64
 }
 
-func NewCacheShard(cap int) *TTLLRUCacheShard {
+func NewCacheShard(cap int, minTickMilli int) *TTLLRUCacheShard {
 	m := make(map[string]*CacheNode, cap)
 	ttlHeap := ttl.NewHeap(cap)
 	lruLL := lru.NewLRULinkedList()
@@ -69,11 +70,12 @@ func NewCacheShard(cap int) *TTLLRUCacheShard {
 	reserTimerChan := make(chan struct{}, 1)
 
 	cache := &TTLLRUCacheShard{
-		mu:    sync.Mutex{},
-		data:  m,
-		cap:   cap,
-		LRULL: lruLL,
-		TTLH:  ttlHeap,
+		mu:      sync.Mutex{},
+		data:    m,
+		minTick: time.Duration(minTickMilli) * time.Millisecond,
+		cap:     cap,
+		LRULL:   lruLL,
+		TTLH:    ttlHeap,
 
 		doneChan:       doneChan,
 		freezeChan:     freezeChan,
@@ -85,7 +87,7 @@ func NewCacheShard(cap int) *TTLLRUCacheShard {
 	return cache
 }
 
-func NewCacheSharded(totalCap int, requestedShards int) *ShardedCache {
+func NewCacheSharded(totalCap int, requestedShards int, minTickMilli int) *ShardedCache {
 	if requestedShards <= 0 {
 		requestedShards = 32
 	}
@@ -96,7 +98,7 @@ func NewCacheSharded(totalCap int, requestedShards int) *ShardedCache {
 	shards := make([]*TTLLRUCacheShard, shardCount)
 
 	for i := range shards {
-		shards[i] = NewCacheShard(shardCap)
+		shards[i] = NewCacheShard(shardCap, minTickMilli)
 	}
 
 	return &ShardedCache{
@@ -242,11 +244,11 @@ func (c *TTLLRUCacheShard) removeCacheExpired() (time.Duration, bool) {
 	}
 
 	if len(c.TTLH.Nodes) > 0 {
-		timeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), 0)
+		timeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), c.minTick)
 		return timeLeft, true
 	}
 
-	return 0, false
+	return c.minTick, false
 }
 
 func (c *TTLLRUCacheShard) startCleanupWorker() {

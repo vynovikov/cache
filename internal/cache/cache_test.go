@@ -40,18 +40,20 @@ type state struct {
 
 func (s *cacheSuite) TestSet() {
 	tt := []struct {
-		name        string
-		cap         int
-		initialData []keyValueTTL
-		addData     keyValueTTL
-		wantData    []keyValueTTL
-		wantLRUL    []string
-		wantTTLH    []keyExpireIn
+		name         string
+		cap          int
+		minTickMilli int
+		initialData  []keyValueTTL
+		addData      keyValueTTL
+		wantData     []keyValueTTL
+		wantLRUL     []string
+		wantTTLH     []keyExpireIn
 	}{
 		{
-			name:        "0. Empty cache",
-			cap:         5,
-			initialData: []keyValueTTL{},
+			name:         "0. Empty cache",
+			cap:          5,
+			minTickMilli: 500,
+			initialData:  []keyValueTTL{},
 			addData: keyValueTTL{
 				Key:   "key0",
 				Value: "value0",
@@ -73,8 +75,9 @@ func (s *cacheSuite) TestSet() {
 			},
 		},
 		{
-			name: "1. Prefilled cache. Adding more data. Same TTL",
-			cap:  5,
+			name:         "1. Prefilled cache. Adding more data. Same TTL",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -128,8 +131,9 @@ func (s *cacheSuite) TestSet() {
 			},
 		},
 		{
-			name: "2. Prefilled cache. Adding more data. Different TTL",
-			cap:  5,
+			name:         "2. Prefilled cache. Adding more data. Different TTL",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -183,8 +187,9 @@ func (s *cacheSuite) TestSet() {
 			},
 		},
 		{
-			name: "3. Same key added. Should move to the head",
-			cap:  5,
+			name:         "3. Same key added. Should move to the head",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -232,8 +237,9 @@ func (s *cacheSuite) TestSet() {
 			},
 		},
 		{
-			name: "4. Capacity exceeded",
-			cap:  5,
+			name:         "4. Capacity exceeded",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -307,7 +313,7 @@ func (s *cacheSuite) TestSet() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCacheShard(v.cap)
+			cache := NewCacheShard(v.cap, v.minTickMilli)
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
@@ -403,19 +409,21 @@ func (s *cacheSuite) TestSet() {
 
 func (s *cacheSuite) TestGet() {
 	tt := []struct {
-		name        string
-		cap         int
-		initialData []keyValueTTL
-		key         string
-		wantValue   any
-		wantExists  bool
-		wantData    []keyValueTTL
-		wantLRUL    []string
-		wantTTLH    []keyExpireIn
+		name         string
+		cap          int
+		minTickMilli int
+		initialData  []keyValueTTL
+		key          string
+		wantValue    any
+		wantExists   bool
+		wantData     []keyValueTTL
+		wantLRUL     []string
+		wantTTLH     []keyExpireIn
 	}{
 		{
-			name: "0. Key is present",
-			cap:  5,
+			name:         "0. Key is present",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -461,8 +469,9 @@ func (s *cacheSuite) TestGet() {
 			},
 		},
 		{
-			name: "1. Key is absent",
-			cap:  5,
+			name:         "1. Key is absent",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -508,8 +517,9 @@ func (s *cacheSuite) TestGet() {
 			},
 		},
 		{
-			name: "2. Key is expired",
-			cap:  5,
+			name:         "2. Key is expired",
+			cap:          5,
+			minTickMilli: 500,
 			initialData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -553,7 +563,7 @@ func (s *cacheSuite) TestGet() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCacheShard(v.cap)
+			cache := NewCacheShard(v.cap, v.minTickMilli)
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
@@ -652,18 +662,20 @@ func (s *cacheSuite) TestGet() {
 
 func (s *cacheSuite) TestWork() {
 	tt := []struct {
-		name       string
-		cap        int
-		setData    []keyValueTTL
-		key        string
-		wantValue  any
-		wantExists bool
-		sleepTime  time.Duration
-		wantState  map[string]state
+		name         string
+		cap          int
+		minTickMilli int
+		setData      []keyValueTTL
+		key          string
+		wantValue    any
+		wantExists   bool
+		sleepTime    time.Duration
+		wantState    map[string]state
 	}{
 		{
-			name: "0. One expired",
-			cap:  10,
+			name:         "0. One expired",
+			cap:          10,
+			minTickMilli: 500,
 			setData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -703,8 +715,9 @@ func (s *cacheSuite) TestWork() {
 			},
 		},
 		{
-			name: "1. All expired",
-			cap:  10,
+			name:         "1. All expired",
+			cap:          10,
+			minTickMilli: 500,
 			setData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -735,8 +748,9 @@ func (s *cacheSuite) TestWork() {
 			},
 		},
 		{
-			name: "2. None expired",
-			cap:  10,
+			name:         "2. None expired",
+			cap:          10,
+			minTickMilli: 500,
 			setData: []keyValueTTL{
 				{
 					Key:   "key00",
@@ -784,7 +798,7 @@ func (s *cacheSuite) TestWork() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCacheShard(v.cap)
+			cache := NewCacheShard(v.cap, v.minTickMilli)
 
 			// 1. Set data
 			for _, setItem := range v.setData {
