@@ -680,23 +680,23 @@ func (s *cacheSuite) TestWork() {
 				{
 					Key:   "key00",
 					Value: "value00",
-					TTL:   80 * time.Millisecond,
+					TTL:   540 * time.Millisecond,
 				},
 				{
 					Key:   "key01",
 					Value: "value01",
-					TTL:   65 * time.Millisecond,
+					TTL:   530 * time.Millisecond,
 				},
 				{
 					Key:   "key02",
 					Value: "value02",
-					TTL:   40 * time.Millisecond,
+					TTL:   490 * time.Millisecond,
 				},
 			},
 			key:        "key01",
 			wantValue:  "value01",
 			wantExists: true,
-			sleepTime:  31 * time.Millisecond,
+			sleepTime:  491 * time.Millisecond,
 			wantState: map[string]state{
 				"after_sleep": {
 					Data: []keyValue{
@@ -710,7 +710,7 @@ func (s *cacheSuite) TestWork() {
 						},
 					},
 					LRULL: []string{"HEAD", "key01", "key00", "TAIL"},
-					TTLH:  []string{"key00", "key01"},
+					TTLH:  []string{"key01", "key00"},
 				},
 			},
 		},
@@ -722,23 +722,23 @@ func (s *cacheSuite) TestWork() {
 				{
 					Key:   "key00",
 					Value: "value00",
-					TTL:   80 * time.Millisecond,
+					TTL:   410 * time.Millisecond,
 				},
 				{
 					Key:   "key01",
 					Value: "value01",
-					TTL:   65 * time.Millisecond,
+					TTL:   420 * time.Millisecond,
 				},
 				{
 					Key:   "key02",
 					Value: "value02",
-					TTL:   40 * time.Millisecond,
+					TTL:   430 * time.Millisecond,
 				},
 			},
 			key:        "key01",
 			wantValue:  nil,
 			wantExists: false,
-			sleepTime:  51 * time.Millisecond,
+			sleepTime:  495 * time.Millisecond,
 			wantState: map[string]state{
 				"after_sleep": {
 					Data:  []keyValue{},
@@ -755,23 +755,23 @@ func (s *cacheSuite) TestWork() {
 				{
 					Key:   "key00",
 					Value: "value00",
-					TTL:   80 * time.Millisecond,
+					TTL:   560 * time.Millisecond,
 				},
 				{
 					Key:   "key01",
 					Value: "value01",
-					TTL:   65 * time.Millisecond,
+					TTL:   540 * time.Millisecond,
 				},
 				{
 					Key:   "key02",
 					Value: "value02",
-					TTL:   40 * time.Millisecond,
+					TTL:   520 * time.Millisecond,
 				},
 			},
 			key:        "key01",
 			wantValue:  "value01",
 			wantExists: true,
-			sleepTime:  21 * time.Millisecond,
+			sleepTime:  500 * time.Millisecond,
 			wantState: map[string]state{
 				"after_sleep": {
 					Data: []keyValue{
@@ -812,18 +812,21 @@ func (s *cacheSuite) TestWork() {
 			// 3. Get data
 			gotValue, gotExists := cache.get(v.key)
 
-			// 4. Comparing data
+			// 4. Freeze
+			cache.freeze()
+
+			// 5. Comparing data
 			s.Equal(v.wantValue, gotValue)
 			s.Equal(v.wantExists, gotExists)
 
-			// 5.1 Checking state after sleep
+			// 6.1 Checking state after sleep
 			gotData, gotLRUL, gotTTLH := cache.getState()
 
-			// 5.2 Checking status after sleep
+			// 6.2 Checking status after sleep
 			s.Equal(v.wantState["after_sleep"].LRULL, gotLRUL)
 			s.Equal(v.wantState["after_sleep"].TTLH, gotTTLH)
 
-			// 5.2 Sorting wantData slice
+			// 6.3 Sorting wantData slice
 			wantData := v.wantState["after_sleep"].Data
 
 			slices.SortFunc(wantData, func(a, b keyValue) int {
@@ -836,13 +839,16 @@ func (s *cacheSuite) TestWork() {
 				return 0
 			})
 
-			// 6. Comparing data
+			// 7. Comparing data
 			s.Equal(wantData, gotData)
 		})
 	}
 }
 
 func (c *TTLLRUCacheShard) getState() ([]keyValue, []string, []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	gotLRUL := []string{"HEAD"}
 	gotTTLH := make([]string, 0)
 	gotData := make([]keyValue, 0)

@@ -209,19 +209,19 @@ func (s *ShardedCache) Get(key string) (value any, exists bool) {
 func (c *TTLLRUCacheShard) freeze() {
 	c.mu.Lock()
 
+	defer func() {
+		c.mu.Unlock()
+		<-c.doneChan
+	}()
+
 	select {
 	case <-c.freezeChan:
-		c.mu.Unlock()
 
 		return
 	default:
 	}
 
 	close(c.freezeChan)
-
-	c.mu.Unlock()
-
-	<-c.doneChan
 }
 
 func (s *ShardedCache) Freeze() {
