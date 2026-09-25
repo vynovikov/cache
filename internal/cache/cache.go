@@ -151,13 +151,9 @@ func (c *TTLLRUCacheShard) set(key string, value any, ttl time.Duration) {
 	c.LRULL.InsertAtHead(newCacheNodeExample.LRUElem)
 
 	heapCurrentSize := len(c.TTLH.Nodes)
-	if key == "key01" {
-		x := 1
-		_ = x
-	}
 	c.TTLH.ShiftUp(heapCurrentSize - 1)
 
-	if newCacheNodeExample.TTLElem.HeapIndex == 0 && len(c.TTLH.Nodes) > 1 {
+	if newCacheNodeExample.TTLElem.HeapIndex == 0 {
 
 		select {
 		case c.resetTimerChan <- struct{}{}:
