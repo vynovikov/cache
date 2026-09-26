@@ -313,7 +313,7 @@ func (s *cacheSuite) TestSet() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCacheShard(v.cap, v.minTickMilli)
+			cache := NewCacheShard(v.cap, v.minTickMilli, 0)
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
@@ -563,7 +563,7 @@ func (s *cacheSuite) TestGet() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCacheShard(v.cap, v.minTickMilli)
+			cache := NewCacheShard(v.cap, v.minTickMilli, 0)
 
 			// 0.1 Adding initial data
 			for _, initialItem := range v.initialData {
@@ -798,7 +798,7 @@ func (s *cacheSuite) TestWork() {
 	for _, v := range tt {
 		s.Run(v.name, func() {
 			// 0.0 Creating cache
-			cache := NewCacheShard(v.cap, v.minTickMilli)
+			cache := NewCacheShard(v.cap, v.minTickMilli, 0)
 
 			// 1. Set data
 			for _, setItem := range v.setData {
@@ -888,4 +888,170 @@ func (c *TTLLRUCacheShard) getState() ([]keyValue, []string, []string) {
 	})
 
 	return gotData, gotLRUL, gotTTLH
+}
+
+func (s *cacheSuite) TestSharded() {
+	tt := []struct {
+		name         string
+		cap          int
+		shardsNum    int
+		minTickMilli int
+		waitDuration time.Duration
+		setData      []keyValueTTL
+		wantData     []keyValue
+	}{
+		{
+			name:         "0. All found",
+			cap:          500,
+			shardsNum:    16,
+			minTickMilli: 500,
+			waitDuration: time.Millisecond * 400,
+			setData: []keyValueTTL{
+				{
+					Key:   "key00",
+					Value: "value00",
+					TTL:   560 * time.Millisecond,
+				},
+				{
+					Key:   "key01",
+					Value: "value01",
+					TTL:   540 * time.Millisecond,
+				},
+				{
+					Key:   "key02",
+					Value: "value02",
+					TTL:   520 * time.Millisecond,
+				},
+				{
+					Key:   "alice",
+					Value: "azaza",
+					TTL:   580 * time.Millisecond,
+				},
+				{
+					Key:   "bob",
+					Value: "bzbzb",
+					TTL:   580 * time.Millisecond,
+				},
+			},
+			wantData: []keyValue{
+				{
+					Key:   "key00",
+					Value: "value00",
+				},
+				{
+					Key:   "key01",
+					Value: "value01",
+				},
+				{
+					Key:   "key02",
+					Value: "value02",
+				},
+				{
+					Key:   "alice",
+					Value: "azaza",
+				},
+				{
+					Key:   "bob",
+					Value: "bzbzb",
+				},
+			},
+		},
+		{
+			name:         "1. Some found. One expired",
+			cap:          500,
+			shardsNum:    16,
+			minTickMilli: 500,
+			waitDuration: time.Millisecond * 510,
+			setData: []keyValueTTL{
+				{
+					Key:   "key00",
+					Value: "value00",
+					TTL:   560 * time.Millisecond,
+				},
+				{
+					Key:   "key01",
+					Value: "value01",
+					TTL:   540 * time.Millisecond,
+				},
+				{
+					Key:   "key02",
+					Value: "value02",
+					TTL:   450 * time.Millisecond,
+				},
+			},
+			wantData: []keyValue{
+				{
+					Key:   "key00",
+					Value: "value00",
+				},
+				{
+					Key:   "key01",
+					Value: "value01",
+				},
+			},
+		},
+		{
+			name:         "2. Some found. One expired. Different value types",
+			cap:          500,
+			shardsNum:    16,
+			minTickMilli: 500,
+			waitDuration: time.Millisecond * 510,
+			setData: []keyValueTTL{
+				{
+					Key:   "key00",
+					Value: 0,
+					TTL:   560 * time.Millisecond,
+				},
+				{
+					Key:   "key01",
+					Value: struct{}{},
+					TTL:   540 * time.Millisecond,
+				},
+				{
+					Key:   "key02",
+					Value: "value02",
+					TTL:   450 * time.Millisecond,
+				},
+			},
+			wantData: []keyValue{
+				{
+					Key:   "key00",
+					Value: 0,
+				},
+				{
+					Key:   "key01",
+					Value: struct{}{},
+				},
+			},
+		},
+	}
+
+	for _, v := range tt {
+		s.Run(v.name, func() {
+
+			shardedCache := NewCacheSharded(v.cap, v.shardsNum, v.minTickMilli)
+
+			for _, dataPiece := range v.setData {
+				shardedCache.Set(dataPiece.Key, dataPiece.Value, dataPiece.TTL)
+			}
+
+			time.Sleep(v.waitDuration)
+
+			shardedCache.Freeze()
+
+			gotData := make([]keyValue, 0, len(v.setData))
+
+			for _, setDataPiece := range v.setData {
+				if value, exists := shardedCache.Get(setDataPiece.Key); exists {
+					gotData = append(gotData, keyValue{
+						Key:   setDataPiece.Key,
+						Value: value,
+					})
+				}
+
+			}
+
+			s.Equal(v.wantData, gotData)
+		})
+	}
 }

@@ -43,6 +43,7 @@ func newCacheNode(key string, value any, expireAt time.Time, TTLHeapIndex int) *
 }
 
 type TTLLRUCacheShard struct {
+	id      uint64
 	mu      sync.Mutex
 	data    map[string]*CacheNode
 	cap     int
@@ -60,7 +61,7 @@ type ShardedCache struct {
 	shardMask uint64
 }
 
-func NewCacheShard(cap int, minTickMilli int) *TTLLRUCacheShard {
+func NewCacheShard(cap int, minTickMilli int, id int) *TTLLRUCacheShard {
 	m := make(map[string]*CacheNode, cap)
 	ttlHeap := ttl.NewHeap(cap)
 	lruLL := lru.NewLRULinkedList()
@@ -70,6 +71,7 @@ func NewCacheShard(cap int, minTickMilli int) *TTLLRUCacheShard {
 	reserTimerChan := make(chan struct{}, 1)
 
 	cache := &TTLLRUCacheShard{
+		id:      uint64(id),
 		mu:      sync.Mutex{},
 		data:    m,
 		minTick: time.Duration(minTickMilli) * time.Millisecond,
@@ -98,7 +100,7 @@ func NewCacheSharded(totalCap int, requestedShards int, minTickMilli int) *Shard
 	shards := make([]*TTLLRUCacheShard, shardCount)
 
 	for i := range shards {
-		shards[i] = NewCacheShard(shardCap, minTickMilli)
+		shards[i] = NewCacheShard(shardCap, minTickMilli, i)
 	}
 
 	return &ShardedCache{
@@ -109,13 +111,10 @@ func NewCacheSharded(totalCap int, requestedShards int, minTickMilli int) *Shard
 
 func (c *TTLLRUCacheShard) set(key string, value any, ttl time.Duration) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	if oldCacheNode, ok := c.data[key]; ok {
 		oldCacheNode.Value = value
 		oldCacheNode.TTLElem.ExpireAt = time.Now().Add(ttl)
-
-		c.data[key] = oldCacheNode
 
 		c.TTLH.ShiftUp(oldCacheNode.TTLElem.HeapIndex)
 		c.TTLH.ShiftDown(oldCacheNode.TTLElem.HeapIndex)
@@ -130,6 +129,8 @@ func (c *TTLLRUCacheShard) set(key string, value any, ttl time.Duration) {
 				// The worker is guaranteed to wake up since a signal is already pending.
 			}
 		}
+
+		c.mu.Unlock()
 
 		return
 	}
@@ -162,6 +163,8 @@ func (c *TTLLRUCacheShard) set(key string, value any, ttl time.Duration) {
 			// The worker is guaranteed to wake up since a signal is already pending.
 		}
 	}
+
+	c.mu.Unlock()
 }
 
 func (s *ShardedCache) Set(key string, value any, ttl time.Duration) {
@@ -172,21 +175,22 @@ func (s *ShardedCache) Set(key string, value any, ttl time.Duration) {
 
 func (c *TTLLRUCacheShard) get(key string) (value any, exists bool) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	if foundCacheNode, ok := c.data[key]; ok {
 
 		if foundCacheNode.TTLElem.ExpireAt.Before(time.Now()) {
 			c.LRULL.Remove(foundCacheNode.LRUElem)
-			heapIndexToRemove := c.data[key].TTLElem.HeapIndex
+			heapIndexToRemove := foundCacheNode.TTLElem.HeapIndex
 			c.TTLH.Remove(heapIndexToRemove)
 
 			delete(c.data, key)
+			c.mu.Unlock()
 
 			return nil, false
 		}
 
 		c.LRULL.MoveToHead(foundCacheNode.LRUElem)
+		c.mu.Unlock()
 
 		return foundCacheNode.Value, true
 	}
