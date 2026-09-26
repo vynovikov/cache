@@ -248,7 +248,9 @@ func (c *TTLLRUCacheShard) removeCacheExpired() (time.Duration, bool) {
 		return c.minTick, false
 	}
 
-	timeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), c.minTick)
+	actualTimeLeft := max(time.Until(c.TTLH.Nodes[0].ExpireAt), c.minTick)
+	maxSleepDuration := c.minTick * 10
+	timeLeft := max(c.minTick, min(actualTimeLeft, maxSleepDuration)) // Protection: if actualTimeLeft > 10*minTick,  timeLeft = 10*minTick
 
 	return timeLeft, true
 }
